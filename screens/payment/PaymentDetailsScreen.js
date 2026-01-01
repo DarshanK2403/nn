@@ -34,7 +34,9 @@ export default function PaymentDetailsScreen({ route }) {
           headers: { Authorization: `Bearer ${session?.access_token}` },
         }
       );
+
       const result = await response.json();
+
       setPayment(result.data);
     } catch (error) {
       console.error("Error fetching payment details:", error);

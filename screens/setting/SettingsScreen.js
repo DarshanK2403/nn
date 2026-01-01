@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
-import { supabase } from "../lib/supabase";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { supabase } from "../../lib/supabase";
 
 export default function SettingsScreen() {
   const handleLogout = async () => {

@@ -14,10 +14,10 @@ import { supabase } from "./lib/supabase";
 import LoginForm from "./screens/LoginForm";
 
 // Import your screen components (create these files in your screens folder)
-import DashboardScreen from "./screens/AdminDashboard";
-import OrdersScreen from "./screens/OrdersScreen";
-import UserScreen from "./screens/UserScreen";
-import SettingsScreen from "./screens/SettingsScreen";
+import DashboardScreen from "./screens/dashboard/AdminDashboard";
+import UserScreen from "./screens/user/UserScreen";
+import SettingsScreen from "./screens/setting/SettingsScreen";
+import OrdersStack from "./screens/order/OrdersStack";
 
 const Tab = createBottomTabNavigator();
 
@@ -41,9 +41,10 @@ function MyTabs() {
       />
       <Tab.Screen
         name="Orders"
-        component={OrdersScreen}
+        component={OrdersStack}
         options={{
           tabBarIcon: ({ color }) => <ShoppingCart color={color} size={20} />,
+          headerShown: false,
         }}
       />
       <Tab.Screen
