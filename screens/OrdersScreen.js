@@ -35,6 +35,7 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -95,26 +96,85 @@ export default function OrdersScreen() {
 
   /* ---------------- Handlers ---------------- */
   const handleNewOrder = async (newOrder) => {
-    setOrders((prev) => [newOrder, ...prev]);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    const canNotify =
-      Constants.appOwnership !== "expo" && Constants.appOwnership !== "guest";
+      // Re-fetch full order from your admin API
+      const res = await fetch(
+        `https://desitrend.store/api/admin/orders?id=${newOrder.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
 
-    if (canNotify) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "🛒 New Order Received",
-          body: `Order ${newOrder.order_code} placed`,
-        },
-        trigger: null,
-      });
+      const result = await res.json();
+
+      if (result?.data) {
+        setOrders((prev) => {
+          const exists = prev.find((o) => o.id === result.data.id);
+          if (exists) {
+            return prev.map((o) => (o.id === result.data.id ? result.data : o));
+          }
+          return [result.data, ...prev];
+        });
+      }
+
+      // 🔔 Notification ONLY for INSERT
+      const canNotify =
+        Constants.appOwnership !== "expo" && Constants.appOwnership !== "guest";
+
+      if (canNotify) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🛒 New Order Received",
+            body: `Order ${newOrder.order_code} placed`,
+          },
+          trigger: null,
+        });
+      }
+    } catch (err) {
+      console.error("New order handler error:", err);
     }
   };
 
-  const handleOrderUpdate = (updatedOrder) => {
-    setOrders((prev) =>
-      prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order))
-    );
+  const handleOrderUpdate = async (updatedOrder) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      // 🔁 Always refetch full order (with payments)
+      const res = await fetch(
+        `https://desitrend.store/api/admin/orders?id=${updatedOrder.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      const result = await res.json();
+
+      if (result?.data) {
+        setOrders((prev) =>
+          prev.map((order) =>
+            order.id === result.data.id ? result.data : order
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Order update refetch error:", err);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
   };
 
   /* ---------------- UI ---------------- */
@@ -170,9 +230,12 @@ export default function OrdersScreen() {
     <View style={styles.container}>
       <FlatList
         data={orders}
-        keyExtractor={(item) => item.id}
+        extraData={orders}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={renderOrderItem}
         contentContainerStyle={styles.listPadding}
+        refreshing={refreshing} // 👈 REQUIRED
+        onRefresh={onRefresh}
       />
     </View>
   );
